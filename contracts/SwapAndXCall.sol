@@ -3,94 +3,9 @@ pragma solidity ^0.8.17;
 
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-import {IConnext} from "@connext/smart-contracts/contracts/core/connext/interfaces/IConnext.sol";
 import {SwapAdapter} from "./Swap/SwapAdapter.sol";
 
 contract SwapAndXCall is SwapAdapter {
-    // Connext address on this domain
-    IConnext connext;
-
-    constructor(address _connext) SwapAdapter() {
-        connext = IConnext(_connext);
-    }
-
-    // EXTERNAL FUNCTIONS
-    /**
-     * @notice Calls a swapper contract and then calls xcall on connext
-     * @dev Data for the swap is generated offchain to call to the appropriate swapper contract
-     * Function is payable since it uses the relayer fee in native asset
-     * @param _fromAsset Address of the asset to swap from
-     * @param _toAsset Address of the asset to swap to
-     * @param _amountIn Amount of the asset to swap from
-     * @param _swapper Address of the swapper contract
-     * @param _swapData Data to call the swapper contract with
-     * @param _destination Destination of the xcall
-     * @param _to Address to send the asset and call with the calldata on the destination
-     * @param _delegate Delegate address
-     * @param _slippage Total slippage amount accepted
-     * @param _callData Calldata to call the destination with
-     */
-    function swapAndXCall(
-        address _fromAsset,
-        address _toAsset,
-        uint256 _amountIn,
-        address _swapper,
-        bytes calldata _swapData,
-        uint32 _destination,
-        address _to,
-        address _delegate,
-        uint256 _slippage,
-        bytes calldata _callData
-    ) external payable {
-        uint256 amountOut = _fromAsset == address(0)
-            ? _setupAndSwapETH(_toAsset, _amountIn, _swapper, _swapData)
-            : _setupAndSwap(_fromAsset, _toAsset, _amountIn, _swapper, _swapData);
-
-        connext.xcall{value: _fromAsset == address(0) ? msg.value - _amountIn : msg.value}(
-            _destination, _to, _toAsset, _delegate, amountOut, _slippage, _callData
-        );
-    }
-
-    /**
-     * @notice Calls a swapper contract and then calls xcall on connext
-     * @dev Data for the swap is generated offchain to call to the appropriate swapper contract
-     * Pays relayer fee from the input asset
-     * @param _fromAsset Address of the asset to swap from
-     * @param _toAsset Address of the asset to swap to
-     * @param _amountIn Amount of the asset to swap from
-     * @param _swapper Address of the swapper contract
-     * @param _swapData Data to call the swapper contract with
-     * @param _destination Destination of the xcall
-     * @param _to Address to send the asset and call with the calldata on the destination
-     * @param _delegate Delegate address
-     * @param _slippage Total slippage amount accepted
-     * @param _callData Calldata to call the destination with
-     * @param _relayerFee Relayer fee to pay in the input asset
-     */
-    function swapAndXCall(
-        address _fromAsset,
-        address _toAsset,
-        uint256 _amountIn,
-        address _swapper,
-        bytes calldata _swapData,
-        uint32 _destination,
-        address _to,
-        address _delegate,
-        uint256 _slippage,
-        bytes calldata _callData,
-        uint256 _relayerFee
-    ) external payable {
-        uint256 amountOut = _fromAsset == address(0)
-            ? _setupAndSwapETH(_toAsset, _amountIn, _swapper, _swapData)
-            : _setupAndSwap(_fromAsset, _toAsset, _amountIn, _swapper, _swapData);
-
-        connext.xcall(
-            _destination, _to, _toAsset, _delegate, amountOut - _relayerFee, _slippage, _callData, _relayerFee
-        );
-    }
-
-    // INTERNAL FUNCTIONS
 
     /**
      * @notice Sets up the swap and returns the amount out
